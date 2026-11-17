@@ -141,9 +141,9 @@ void loop() {
         String payloadUmid = String(umidade, 1);
          mqtt_client.publish(sensor_topic, payloadTemp.c_str());
          mqtt_client.publish(umidade_topic, payloadUmid.c_str());
-        Serial.print("Temp enviada: ");
+        Serial.print("Temp enviada: \n");
         Serial.println(payloadTemp);
-        Serial.print("Umi enviada: ");
+        Serial.print("Umi enviada: \n");
         Serial.print(payloadUmid);
           
          }
