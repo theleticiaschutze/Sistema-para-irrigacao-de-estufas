@@ -5,8 +5,12 @@ from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 from django.contrib.auth.forms import UserChangeForm
 
+from datetime import datetime
+from django.utils import timezone
+
 from .models import CommandDevice, SensorDevice, IrrigationConfig
 from .mqtt_client import publish_message
+from .models import AgendamentoIrrigacao
 
 
 @csrf_exempt
@@ -186,36 +190,31 @@ def get_sensor_values(request):
 
     config, _ = IrrigationConfig.objects.get_or_create(user=request.user)
 
-    temp_sensor = sensors.filter(tipo_sensor='Temperatura').first()
-    hum_sensor = sensors.filter(tipo_sensor='Humidade').first()
+    # 1. Determina se a válvula deve ligar com base nas escolhas explícitas
+    should_turn_on = False
 
-    temp_atual = temp_sensor.current_value if (temp_sensor and temp_sensor.current_value is not None) else None
-    hum_atual = hum_sensor.current_value if (hum_sensor and hum_sensor.current_value is not None) else None
+    if config.auto_mode and config.actuator:
+        temp_val = config.temp_sensor.current_value if (config.temp_sensor and config.temp_sensor.current_value is not None) else None
+        hum_val = config.hum_sensor.current_value if (config.hum_sensor and config.hum_sensor.current_value is not None) else None
 
-    # Se o modo automático estiver ativo e houver leituras válidas
-    if config.auto_mode and (temp_atual is not None or hum_atual is not None):
-        temp_limit = config.temp_limit if config.temp_limit is not None else 35.0
-        hum_limit = config.hum_limit if config.hum_limit is not None else 40.0
+        condicao_temp = (temp_val >= config.temp_limit) if temp_val is not None else False
+        condicao_hum = (hum_val <= config.hum_limit) if hum_val is not None else False
 
-        # Dispara se umidade for baixa ou temperatura excessiva
-        condicao_temperatura = (temp_atual >= temp_limit) if temp_atual is not None else False
-        condicao_umidade = (hum_atual <= hum_limit) if hum_atual is not None else False
-
-        should_turn_on = condicao_temperatura or condicao_umidade
+        should_turn_on = condicao_temp or condicao_hum
     else:
-        # Se o modo automático for desligado no formulário, a válvula deve ser desligada
+        # Se desligou o auto_mode ou não configurou atuador, deve desligar
         should_turn_on = False
 
-    # Executa a troca de estado quando houver alteração
+    # 2. Executa a alteração de estado apenas se houver mudança
     if config.valve_is_on != should_turn_on:
         config.valve_is_on = should_turn_on
         config.save()
-
-        valve_device = CommandDevice.objects.filter(user=request.user).first()
-        if valve_device:
+        
+        # Envia a ordem MQTT especificamente para o atuador configurado
+        if config.actuator:
             action = 'on' if should_turn_on else 'off'
             try:
-                publish_message(valve_device.topic, action)
+                publish_message(config.actuator.topic, action)
             except Exception as e:
                 print("Erro ao publicar MQTT na automação:", e)
 
@@ -232,12 +231,19 @@ def save_irrigation_config(request):
         
         temp_val = request.POST.get('temp_limit')
         hum_val = request.POST.get('hum_limit')
+        temp_sensor_id = request.POST.get('temp_sensor_id')
+        hum_sensor_id = request.POST.get('hum_sensor_id')
+        actuator_id = request.POST.get('actuator_id')
 
         try:
-            if temp_val is not None and temp_val != "":
+            if temp_val:
                 config.temp_limit = float(temp_val)
-            if hum_val is not None and hum_val != "":
+            if hum_val:
                 config.hum_limit = float(hum_val)
+
+            config.temp_sensor_id = int(temp_sensor_id) if temp_sensor_id else None
+            config.hum_sensor_id = int(hum_sensor_id) if hum_sensor_id else None
+            config.actuator_id = int(actuator_id) if actuator_id else None
             
             config.auto_mode = 'auto_mode' in request.POST
             config.save()
@@ -249,18 +255,47 @@ def save_irrigation_config(request):
 
 
 @login_required
+def criar_agendamento(request):
+    if request.method == "POST":
+        device_id = request.POST.get("device_id")
+        data_hora_str = request.POST.get("data_hora")
+        duracao = request.POST.get("duracao", 10)
+
+        if device_id and data_hora_str:
+            device = get_object_or_404(CommandDevice, id=device_id, user=request.user)
+            # Converte a string do input datetime-local para datetime ciente do fuso horário
+            data_hora = timezone.make_aware(datetime.strptime(data_hora_str, "%Y-%m-%dT%H:%M"))
+            
+            AgendamentoIrrigacao.objects.create(
+                user=request.user,
+                device=device,
+                data_hora=data_hora,
+                duracao_segundos=int(duracao)
+            )
+
+    return redirect('painel')
+
+
+@login_required
 def painel(request):    
     command_devices = CommandDevice.objects.filter(user=request.user)    
     sensor_devices = SensorDevice.objects.filter(user=request.user) 
+    
+    temp_sensors = sensor_devices.filter(tipo_sensor='Temperatura')
+    hum_sensors = sensor_devices.filter(tipo_sensor='Humidade')
+    agendamentos = AgendamentoIrrigacao.objects.filter(user=request.user).order_by('-data_hora')[:5]
+    
     config, _ = IrrigationConfig.objects.get_or_create(user=request.user)
     
     return render(request, 'iot_devices/painel.html', {
         'command_devices': command_devices,
         'sensor_devices': sensor_devices,
+        'temp_sensors': temp_sensors,
+        'hum_sensors': hum_sensors,
         'config': config,
-        'valve_is_on': config.valve_is_on
+        'valve_is_on': config.valve_is_on,
+        'agendamentos': agendamentos
     })
-
 
 @login_required
 def profile(request):
