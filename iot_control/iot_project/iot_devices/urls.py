@@ -13,5 +13,4 @@ urlpatterns = [
     path('painel/', views.painel, name='painel'),
     path('save_irrigation_config/', views.save_irrigation_config, name='save_irrigation_config'),
     path('get_actuator_values/', views.get_actuator_values, name='get_actuator_values'),
-    path('criar_agendamento/', views.criar_agendamento, name='criar_agendamento'),
 ]

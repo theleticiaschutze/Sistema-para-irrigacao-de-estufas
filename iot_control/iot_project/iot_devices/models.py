@@ -42,46 +42,10 @@ class SensorDevice(models.Model):
 # Configurações de Irrigação = quando ligar 
 class IrrigationConfig(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    
-    # Sensores e atuador selecionados
-    temp_sensor = models.ForeignKey(
-        SensorDevice, 
-        on_delete=models.SET_NULL, 
-        null=True, blank=True, 
-        related_name="config_temp"
-    )
-    hum_sensor = models.ForeignKey(
-        SensorDevice, 
-        on_delete=models.SET_NULL, 
-        null=True, blank=True, 
-        related_name="config_hum"
-    )
-    actuator = models.ForeignKey(
-        CommandDevice, 
-        on_delete=models.SET_NULL, 
-        null=True, blank=True
-    )
-
-    temp_limit = models.FloatField(default=30.0)
-    hum_limit = models.FloatField(default=40.0)
-    auto_mode = models.BooleanField(default=False)
-    valve_is_on = models.BooleanField(default=False)
+    temp_limit = models.FloatField(default=30.0, help_text="Temperatura máxima limite (°C)")
+    hum_limit = models.FloatField(default=40.0, help_text="Umidade mínima limite (%)")
+    auto_mode = models.BooleanField(default=False, help_text="Modo automático ligado/desligado")
+    valve_is_on = models.BooleanField(default=False, help_text="Status atual da válvula")
 
     def __str__(self):
-        return f"Config Irrigação - User: {self.user.username}"
-
-
-class AgendamentoIrrigacao(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    device = models.ForeignKey(CommandDevice, on_delete=models.CASCADE, help_text="Válvula ou atuador")
-    data_hora = models.DateTimeField(help_text="Data e hora para iniciar a irrigação")
-    duracao_segundos = models.PositiveIntegerField(default=10, help_text="Duração da rega em segundos")
-    executado = models.BooleanField(default=False)
-    criado_em = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ['data_hora']
-
-    def __str__(self):
-        status = "Executado" if self.executado else "Pendente"
-        return f"{self.device.name} - {self.data_hora.strftime('%d/%m/%Y %H:%M')} ({status})"
+        return f"Config Irrigação - User: {self.user.username} (Auto: {self.auto_mode})"

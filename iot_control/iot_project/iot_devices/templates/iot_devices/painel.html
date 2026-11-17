@@ -34,45 +34,6 @@
     <div class="card-body">
         <form id="irrigation-form">
             {% csrf_token %}
-
-            <div class="form-row row">
-        <div class="form-group col-md-4 mb-3">
-            <label for="temp_sensor_id">Sensor de Temperatura:</label>
-            <select class="form-control" name="temp_sensor_id">
-                <option value="">-- Selecione --</option>
-             {% for s in temp_sensors %}
-                    <option value="{{ s.id }}" {% if config.temp_sensor_id == s.id %}selected{% endif %}>
-                    {{ s.name }} (ID: {{ s.id }})
-                 </option>
-                {% endfor %}
-            </select>
-        </div>
-
-            <div class="form-group col-md-4 mb-3">
-            <label for="hum_sensor_id">Sensor de Umidade:</label>
-            <select class="form-control" name="hum_sensor_id">
-                <option value="">-- Selecione --</option>
-                {% for s in hum_sensors %}
-                    <option value="{{ s.id }}" {% if config.hum_sensor_id == s.id %}selected{% endif %}>
-                        {{ s.name }} (ID: {{ s.id }})
-                    </option>
-                {% endfor %}
-            </select>
-        </div>
-
-            <div class="form-group col-md-4 mb-3">
-            <label for="actuator_id">Atuador:</label>
-            <select class="form-control" name="actuator_id">
-                <option value="">-- Selecione --</option>
-                {% for dev in command_devices %}
-                    <option value="{{ dev.id }}" {% if config.actuator_id == dev.id %}selected{% endif %}>
-                        {{ dev.name }} (ID: {{ dev.id }})
-                    </option>
-                {% endfor %}
-            </select>
-        </div>
-    </div>
-
             <div class="form-row">
                 <div class="form-group col-md-6">
                     <label for="temp_limit">Temperatura Máxima Limite (°C):</label>
@@ -98,53 +59,6 @@
                 </span>
             </span>
         </div>
-    </div>
-</div>
-
-<div class="card mt-4 shadow-sm mb-4">
-    <div class="card-header bg-dark text-white">
-        <strong>Agendar</strong>
-    </div>
-    <div class="card-body">
-        <form method="POST" action="{% url 'criar_agendamento' %}">
-            {% csrf_token %}
-            <div class="form-row row">
-                <div class="form-group col-md-4 mb-3">
-                    <label for="device_id">Dispositivo / Válvula:</label>
-                    <select class="form-control" name="device_id" required>
-                        {% for dev in command_devices %}
-                            <option value="{{ dev.id }}">{{ dev.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="form-group col-md-4 mb-3">
-                    <label for="data_hora">Data e Horário:</label>
-                    <input type="datetime-local" class="form-control" name="data_hora" required>
-                </div>
-                <div class="form-group col-md-4 mb-3">
-                    <label for="duracao">Duração em segundos:</label>
-                    <input type="number" class="form-control" name="duracao" value="10" min="1" required>
-                </div>
-            </div>
-            <button type="submit" class="btn btn-dark primary btn-sm">Agendar Irrigação</button>
-        </form>
-
-        <hr>
-        <h6 class="mt-3 font-weight-bold">Últimos Agendamentos:</h6>
-        <ul class="list-group mt-2">
-            {% for item in agendamentos %}
-            <li class="list-group-item d-flex justify-content-between align-items-center">
-                <span>
-                    <strong>{{ item.device.name }}</strong> — {{ item.data_hora|date:"d/m/Y H:i" }} ({{ item.duracao_segundos }}s)
-                </span>
-                <span class="badge {% if item.executado %}bg-success{% else %}bg-warning text-dark{% endif %}">
-                    {% if item.executado %}Concluído{% else %}Pendente{% endif %}
-                </span>
-            </li>
-            {% empty %}
-            <li class="list-group-item text-muted text-center">Nenhum agendamento cadastrado.</li>
-            {% endfor %}
-        </ul>
     </div>
 </div>
 
