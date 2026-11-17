@@ -33,6 +33,7 @@ void connectToMQTTBroker();
 void mqttCallback(char *topic, byte *payload, unsigned int length);
 
 void setup() {
+    dht.begin();
     Serial.begin(115200);
     pinMode(D6, OUTPUT);
     digitalWrite(D6, LOW);
@@ -124,16 +125,20 @@ void loop() {
 
         float temperatura = dht.readTemperature();
         float umidade = dht.readHumidity();
-        
-       if (isnan(temperatura) || isnan(umidade)) {
+
+        if (isnan(temperatura) || isnan(umidade)) {
        Serial.println("Falha ao ler dados do sensor DHT11!");
        return;
          }
- if (umidade < 100.0) {
 
-            String payloadTemp = String(temperatura, 1);
+        
+        
+        
+    if (umidade < 95.0 && umidade > 15.0) {
+
+             
+          String payloadTemp = String(temperatura, 1);
         String payloadUmid = String(umidade, 1);
-    
          mqtt_client.publish(sensor_topic, payloadTemp.c_str());
          mqtt_client.publish(umidade_topic, payloadUmid.c_str());
         Serial.print("Temp enviada: ");
@@ -142,6 +147,11 @@ void loop() {
         Serial.print(payloadUmid);
           
          }
+        
+       
+
+         
+
     }
 
     
