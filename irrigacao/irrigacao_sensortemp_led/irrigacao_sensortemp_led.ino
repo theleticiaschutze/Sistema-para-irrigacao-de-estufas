@@ -129,8 +129,9 @@ void loop() {
        Serial.println("Falha ao ler dados do sensor DHT11!");
        return;
          }
+ if (umidade < 100.0) {
 
-        String payloadTemp = String(temperatura, 1);
+            String payloadTemp = String(temperatura, 1);
         String payloadUmid = String(umidade, 1);
     
          mqtt_client.publish(sensor_topic, payloadTemp.c_str());
@@ -139,6 +140,8 @@ void loop() {
         Serial.println(payloadTemp);
         Serial.print("Umi enviada: ");
         Serial.print(payloadUmid);
+          
+         }
     }
 
     
