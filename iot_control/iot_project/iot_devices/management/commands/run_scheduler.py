@@ -1,6 +1,5 @@
 import time
 import threading
-from datetime import datetime
 import paho.mqtt.publish as publish_helper
 
 from django.core.management.base import BaseCommand
@@ -13,16 +12,17 @@ MQTT_PORT = 1883
 def executar_acionamento(topico, duracao, agendamento_id):
     """Executa a irrigação em uma thread separada sem travar o loop de checagem."""
     try:
-        print(f"[WORKER] Iniciando rega: ligando {topico} por {duracao}s...")
-        publish_helper.single(topico, payload="on", hostname=MQTT_BROKER, port=MQTT_PORT)
+        topico_limpo = topico.strip()
+        print(f"[WORKER] #{agendamento_id} Iniciando rega: ligando '{topico_limpo}' por {duracao}s...")
+        publish_helper.single(topico_limpo, payload="on", hostname=MQTT_BROKER, port=MQTT_PORT, qos=1)
         
         time.sleep(duracao)
         
-        publish_helper.single(topico, payload="off", hostname=MQTT_BROKER, port=MQTT_PORT)
-        print(f"[WORKER] Rega finalizada: {topico} desligado.")
+        publish_helper.single(topico_limpo, payload="off", hostname=MQTT_BROKER, port=MQTT_PORT, qos=1)
+        print(f"[WORKER] #{agendamento_id} Rega finalizada: '{topico_limpo}' desligado.")
         
     except Exception as e:
-        print(f"[WORKER] Erro ao enviar comando MQTT: {e}")
+        print(f"[WORKER] #{agendamento_id} Erro ao enviar comando MQTT: {e}")
 
 
 class Command(BaseCommand):
@@ -34,30 +34,23 @@ class Command(BaseCommand):
         while True:
             try:
                 agora = timezone.now()
-                # Busca tarefas pendentes cuja data/hora já chegou ou passou
                 agendamentos_pendentes = AgendamentoIrrigacao.objects.filter(
                     executado=False,
                     data_hora__lte=agora
                 )
 
                 for agendamento in agendamentos_pendentes:
-                    # Marca como executado imediatamente para evitar disparos duplicados
                     agendamento.executado = True
                     agendamento.save()
 
-                    topico_atuador = agendamento.device.topic
-                    tempo_duracao = agendamento.duracao_segundos
-
-                    # Dispara a rega em uma thread independente
                     thread = threading.Thread(
                         target=executar_acionamento,
-                        args=(topico_atuador, tempo_duracao, agendamento.id)
+                        args=(agendamento.device.topic, agendamento.duracao_segundos, agendamento.id),
+                        daemon=False
                     )
-                    thread.daemon = True
                     thread.start()
 
             except Exception as e:
                 self.stdout.write(self.style.ERROR(f"[WORKER] Erro no ciclo de checagem: {e}"))
 
-           
             time.sleep(5)

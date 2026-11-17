@@ -129,6 +129,23 @@
             <button type="submit" class="btn btn-dark primary btn-sm">Agendar Irrigação</button>
         </form>
 
+        <hr>
+        <h6>Últimos Agendamentos</h6>
+        <ul class="list-group list-group-flush">
+            {% for ag in agendamentos %}
+                <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                    <span>
+                        <strong>{{ ag.device.name }}</strong> — {{ ag.data_hora|date:"d/m/Y H:i" }} ({{ ag.duracao_segundos }}s)
+                    </span>
+                    <span class="badge {% if ag.executado %}bg-success{% else %}bg-warning text-dark{% endif %}">
+                        {% if ag.executado %}Executado{% else %}Pendente{% endif %}
+                    </span>
+                </li>
+            {% empty %}
+                <li class="list-group-item px-0 text-muted">Nenhum agendamento cadastrado.</li>
+            {% endfor %}
+        </ul>
+
         
         
     </div>

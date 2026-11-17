@@ -1,68 +1,62 @@
+import threading
 import paho.mqtt.client as mqtt
+import paho.mqtt.publish as publish
 import requests
-from .mqtt_session_adm import session_mqtt
 
-# Configurações do broker
-MQTT_BROKER = "broker.emqx.io"  # ou seu IP local
+MQTT_BROKER = "broker.emqx.io"
 MQTT_PORT = 1883
 MQTT_TOPIC = "topicIrrigacao_ifsc/#"
-
-# URL da API Django para atualizar o valor do sensor
 API_URL = "http://localhost:8000/iot/update_sensor_by_topic/"
+
+def _enviar_para_django(topic, value):
+    try:
+        requests.post(
+            API_URL,
+            data={"topic": topic, "value": value},
+            timeout=3
+        )
+    except Exception as e:
+        print("Erro ao atualizar Django via API:", e)
 
 def on_connect(client, userdata, flags, rc):
     print("Conectado ao broker com código:", rc)
     client.subscribe(MQTT_TOPIC)
 
 def on_message(client, userdata, msg):
-    print(f"Mensagem recebida: {msg.topic} => {msg.payload.decode()}")
+    topic_recebido = msg.topic.strip()
+    payload_str = msg.payload.decode().strip()
 
     try:
+        payload_value = float(payload_str)
+        # Envia em thread separada para nunca travar o envio de comandos MQTT
+        threading.Thread(
+            target=_enviar_para_django,
+            args=(topic_recebido, payload_value),
+            daemon=True
+        ).start()
+    except ValueError:
+        pass
 
-        # Extrai o ID do dispositivo do tópico e converte a mensagem para número
-        # Exemplo de tópico: "topicEdilson_ifsc/sensor/1"
-        # if not msg.topic.startswith("topicEdilson_ifsc/sensor/"):
-        #     print("Tópico não corresponde ao padrão esperado.")
-        #     return
-       #sensor_id = int(msg.topic.split("/")[-1])  # Extrai o ID do dispositivo
-        #payload_value = float(msg.payload.decode())  # Converte a mensagem para número
-
-        topic_recebido = msg.topic.strip()
-        payload_value = float(msg.payload.decode())
-
-
-        
-        response = requests.post(
-            #f"{API_URL}{sensor_id}/",
-            #data={"value": payload_value}
-            API_URL,
-            data={
-                "topic": topic_recebido,
-                "value": payload_value
-            }
-        )
-
-        # response = session_mqtt().post(
-        #     f"{API_URL}{sensor_id}/",
-        #     data={"value": payload_value}
-        # )
-        
-        print("Status da atualização:", response.status_code)
-    except Exception as e:
-        print("Erro ao processar mensagem:", e)
-
-def connect_mqtt():
-    client = mqtt.Client()
-    client.on_connect = on_connect
-    client.on_message = on_message
-
-    client.connect(MQTT_BROKER, MQTT_PORT)
-    client.loop_start()
-    return client
+mqtt_client = mqtt.Client()
+mqtt_client.on_connect = on_connect
+mqtt_client.on_message = on_message
+mqtt_client.connect_async(MQTT_BROKER, MQTT_PORT, keepalive=60)
+mqtt_client.loop_start()
 
 def publish_message(topic, message):
-    client = connect_mqtt()
-    client.publish(topic, message)
-    client.disconnect()
+    topic_limpo = topic.strip()
 
-connect_mqtt()
+    if mqtt_client.is_connected():
+        info = mqtt_client.publish(topic_limpo, message, qos=1)
+        info.wait_for_publish()
+        print(f"Comando '{message}' publicado em '{topic_limpo}' (conexão ativa)")
+    else:
+        # Fallback: abre conexão dedicada, aguarda confirmação de envio e fecha corretamente
+        publish.single(
+            topic_limpo,
+            payload=message,
+            hostname=MQTT_BROKER,
+            port=MQTT_PORT,
+            qos=1
+        )
+        print(f"Comando '{message}' publicado em '{topic_limpo}' (conexão avulsa)")
