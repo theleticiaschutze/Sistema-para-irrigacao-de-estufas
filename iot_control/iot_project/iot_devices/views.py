@@ -12,6 +12,10 @@ from .models import CommandDevice, SensorDevice, IrrigationConfig
 from .mqtt_client import publish_message
 from .models import AgendamentoIrrigacao
 
+from django.shortcuts import get_object_or_404, redirect
+from django.contrib.auth.decorators import login_required
+from .models import AgendamentoIrrigacao
+
 
 @csrf_exempt
 def update_sensor_value_by_topic(request):
@@ -312,3 +316,9 @@ def edit_profile(request):
     else:
         form = UserChangeForm(instance=request.user)
     return render(request, 'registration/edit_profile.html', {'form': form})
+
+@login_required
+def excluir_agendamento(request, agendamento_id):
+    agendamento = get_object_or_404(AgendamentoIrrigacao, id=agendamento_id, user=request.user)
+    agendamento.delete()
+    return redirect('painel')

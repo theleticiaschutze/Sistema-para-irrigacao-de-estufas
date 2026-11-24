@@ -7,13 +7,13 @@
     {% for device in command_devices %}
     <li class="list-group-item d-flex justify-content-between align-items-center">
         <div>
-            <strong>{{ device.name }}</strong> 
+            <strong>{{ device.name }}</strong>
             <span id="actuator-status-{{ device.id }}" class="badge {% if device.status %}bg-success{% else %}bg-danger{% endif %} ml-2">
                 {% if device.status %}LIGADO{% else %}DESLIGADO{% endif %}
             </span><br>
             <small class="text-muted">Cmd: {{ device.topic }} {% if device.status_topic %}| Status: {{ device.status_topic }}{% endif %}</small>
         </div>
-        <div>            
+        <div>
             <a href="{% url 'control_command_device' device.id %}?action=on" class="btn btn-success btn-sm mr-2">Ligar</a>
             <a href="{% url 'control_command_device' device.id %}?action=off" class="btn btn-danger btn-sm">Desligar</a>
         </div>
@@ -36,42 +36,42 @@
             {% csrf_token %}
 
             <div class="form-row row">
-        <div class="form-group col-md-4 mb-3">
-            <label for="temp_sensor_id">Sensor de Temperatura:</label>
-            <select class="form-control" name="temp_sensor_id">
-                <option value="">-- Selecione --</option>
-             {% for s in temp_sensors %}
-                    <option value="{{ s.id }}" {% if config.temp_sensor_id == s.id %}selected{% endif %}>
-                    {{ s.name }} (ID: {{ s.id }})
-                 </option>
-                {% endfor %}
-            </select>
-        </div>
+                <div class="form-group col-md-4 mb-3">
+                    <label for="temp_sensor_id">Sensor de Temperatura:</label>
+                    <select class="form-control" name="temp_sensor_id">
+                        <option value="">-- Selecione --</option>
+                        {% for s in temp_sensors %}
+                        <option value="{{ s.id }}" {% if config.temp_sensor_id == s.id %}selected{% endif %}>
+                            {{ s.name }} (ID: {{ s.id }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
 
-            <div class="form-group col-md-4 mb-3">
-            <label for="hum_sensor_id">Sensor de Umidade:</label>
-            <select class="form-control" name="hum_sensor_id">
-                <option value="">-- Selecione --</option>
-                {% for s in hum_sensors %}
-                    <option value="{{ s.id }}" {% if config.hum_sensor_id == s.id %}selected{% endif %}>
-                        {{ s.name }} (ID: {{ s.id }})
-                    </option>
-                {% endfor %}
-            </select>
-        </div>
+                <div class="form-group col-md-4 mb-3">
+                    <label for="hum_sensor_id">Sensor de Umidade:</label>
+                    <select class="form-control" name="hum_sensor_id">
+                        <option value="">-- Selecione --</option>
+                        {% for s in hum_sensors %}
+                        <option value="{{ s.id }}" {% if config.hum_sensor_id == s.id %}selected{% endif %}>
+                            {{ s.name }} (ID: {{ s.id }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
 
-            <div class="form-group col-md-4 mb-3">
-            <label for="actuator_id">Atuador:</label>
-            <select class="form-control" name="actuator_id">
-                <option value="">-- Selecione --</option>
-                {% for dev in command_devices %}
-                    <option value="{{ dev.id }}" {% if config.actuator_id == dev.id %}selected{% endif %}>
-                        {{ dev.name }} (ID: {{ dev.id }})
-                    </option>
-                {% endfor %}
-            </select>
-        </div>
-    </div>
+                <div class="form-group col-md-4 mb-3">
+                    <label for="actuator_id">Atuador:</label>
+                    <select class="form-control" name="actuator_id">
+                        <option value="">-- Selecione --</option>
+                        {% for dev in command_devices %}
+                        <option value="{{ dev.id }}" {% if config.actuator_id == dev.id %}selected{% endif %}>
+                            {{ dev.name }} (ID: {{ dev.id }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
 
             <div class="form-row">
                 <div class="form-group col-md-6">
@@ -89,10 +89,10 @@
             </div>
             <button type="submit" class="btn btn-dark primary btn-sm">Salvar Configurações</button>
         </form>
-        
+
         <hr>
         <div class="d-flex justify-content-between align-items-center mt-3">
-            <span>Status Atual da Válvula: 
+            <span>Status Atual da Válvula:
                 <span id="valve-status" class="badge {% if valve_is_on %}bg-success{% else %}bg-secondary{% endif %}">
                     {% if valve_is_on %}Ligada{% else %}Desligada{% endif %}
                 </span>
@@ -106,24 +106,33 @@
         <strong>Agendar</strong>
     </div>
     <div class="card-body">
-        <form method="POST" action="{% url 'criar_agendamento' %}">
+        <form id="schedule-form" method="POST" action="{% url 'criar_agendamento' %}">
             {% csrf_token %}
             <div class="form-row row">
                 <div class="form-group col-md-4 mb-3">
                     <label for="device_id">Dispositivo / Válvula:</label>
                     <select class="form-control" name="device_id" required>
                         {% for dev in command_devices %}
-                            <option value="{{ dev.id }}">{{ dev.name }}</option>
+                        <option value="{{ dev.id }}">{{ dev.name }}</option>
                         {% endfor %}
                     </select>
                 </div>
+
                 <div class="form-group col-md-4 mb-3">
                     <label for="data_hora">Data e Horário:</label>
                     <input type="datetime-local" class="form-control" name="data_hora" required>
                 </div>
+
                 <div class="form-group col-md-4 mb-3">
-                    <label for="duracao">Duração em segundos:</label>
-                    <input type="number" class="form-control" name="duracao" value="10" min="1" required>
+                    <label>Duração do Acionamento:</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control" id="duracao_minutos" placeholder="0" min="0" value="0">
+                        <span class="input-group-text">min</span>
+
+                        <input type="number" class="form-control" id="duracao_segundos" placeholder="10" min="0" max="59" value="10">
+                        <span class="input-group-text">seg</span>
+                    </div>
+                    <input type="hidden" name="duracao" id="duracao_total" value="10">
                 </div>
             </div>
             <button type="submit" class="btn btn-dark primary btn-sm">Agendar Irrigação</button>
@@ -133,118 +142,143 @@
         <h6>Últimos Agendamentos</h6>
         <ul class="list-group list-group-flush">
             {% for ag in agendamentos %}
-                <li class="list-group-item d-flex justify-content-between align-items-center px-0">
-                    <span>
-                        <strong>{{ ag.device.name }}</strong> — {{ ag.data_hora|date:"d/m/Y H:i" }} ({{ ag.duracao_segundos }}s)
-                    </span>
-                    <span class="badge {% if ag.executado %}bg-success{% else %}bg-warning text-dark{% endif %}">
+            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                <span>
+                    <strong>{{ ag.device.name }}</strong> — {{ ag.data_hora|date:"d/m/Y H:i" }} ({{ ag.duracao_segundos }}s)
+                </span>
+                <div class="d-flex align-items-center">
+                    <span class="badge {% if ag.executado %}bg-success{% else %}bg-warning text-dark{% endif %} me-2">
                         {% if ag.executado %}Executado{% else %}Pendente{% endif %}
                     </span>
-                </li>
+
+                    <a href="{% url 'excluir_agendamento' ag.id %}" class="btn btn-outline-danger btn-sm py-0 px-2"
+                        onclick="return confirm('Tem certeza de que deseja cancelar/excluir este agendamento?');"
+                        title="Excluir agendamento">
+                        &times;
+                    </a>
+                </div>
+            </li>
             {% empty %}
-                <li class="list-group-item px-0 text-muted">Nenhum agendamento cadastrado.</li>
+            <li class="list-group-item px-0 text-muted">Nenhum agendamento cadastrado.</li>
             {% endfor %}
         </ul>
-
-        
-        
     </div>
 </div>
 
 <!-- JAVASCRIPT -->
 <script>
-function fetchSensorData() {
-    fetch("{% url 'get_sensor_values' %}")
-        .then(response => {
-            if (!response.ok) {
-                throw new Error("Erro na requisição: " + response.status);
-            }
-            return response.json();
-        })
-        .then(data => {
-            const sensorList = document.getElementById("sensor-list");
-            if (!sensorList) return;
-            sensorList.innerHTML = "";
-
-            // Trata o objeto retornado do backend
-            const listaSensores = data.sensors || (Array.isArray(data) ? data : []);
-
-            listaSensores.forEach(sensor => {
-                const li = document.createElement("li");
-                li.className = "list-group-item d-flex justify-content-between align-items-center";
-
-                const leftDiv = document.createElement("div");
-                leftDiv.innerHTML = `
-                    <strong>${sensor.name} / ID: ${sensor.id}</strong> 
-                    <span class="badge bg-info text-dark ml-2">${sensor.tipo_sensor}</span><br>
-                    <small class="text-muted">Tópico MQTT: ${sensor.topic}</small><br>
-                    <span class="font-weight-bold" style="font-size: 1.1em;">
-                        ${sensor.current_value} ${sensor.unit}
-                    </span>
-                `;
-
-                li.appendChild(leftDiv);
-                sensorList.appendChild(li);
-            });
-
-            // Atualiza status da válvula com classes de fundo do Bootstrap 5
-            if (typeof data.valve_is_on !== 'undefined') {
-                const badge = document.getElementById("valve-status");
-                if (badge) {
-                    badge.className = data.valve_is_on ? "badge bg-success" : "badge bg-secondary";
-                    badge.innerText = data.valve_is_on ? "Ligada" : "Desligada";
+    function fetchSensorData() {
+        fetch("{% url 'get_sensor_values' %}")
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error("Erro na requisição: " + response.status);
                 }
-            }
-        })
-        .catch(error => console.error('Erro ao buscar sensores:', error));
-}
+                return response.json();
+            })
+            .then(data => {
+                const sensorList = document.getElementById("sensor-list");
+                if (!sensorList) return;
+                sensorList.innerHTML = "";
 
-function fetchActuatorData() {
-    fetch("{% url 'get_actuator_values' %}")
-        .then(response => {
-            if (!response.ok) return [];
-            return response.json();
-        })
-        .then(data => {
-            if (Array.isArray(data)) {
-                data.forEach(actuator => {
-                    const badge = document.getElementById(`actuator-status-${actuator.id}`);
-                    if (badge) {
-                        badge.className = actuator.status ? "badge bg-success ml-2" : "badge bg-danger ml-2";
-                        badge.textContent = actuator.status ? "LIGADO" : "DESLIGADO";
-                    }
+                const listaSensores = data.sensors || (Array.isArray(data) ? data : []);
+
+                listaSensores.forEach(sensor => {
+                    const li = document.createElement("li");
+                    li.className = "list-group-item d-flex justify-content-between align-items-center";
+
+                    const leftDiv = document.createElement("div");
+                    leftDiv.innerHTML = `
+                        <strong>${sensor.name} / ID: ${sensor.id}</strong> 
+                        <span class="badge bg-info text-dark ml-2">${sensor.tipo_sensor}</span><br>
+                        <small class="text-muted">Tópico MQTT: ${sensor.topic}</small><br>
+                        <span class="font-weight-bold" style="font-size: 1.1em;">
+                            ${sensor.current_value} ${sensor.unit}
+                        </span>
+                    `;
+
+                    li.appendChild(leftDiv);
+                    sensorList.appendChild(li);
                 });
+
+                if (typeof data.valve_is_on !== 'undefined') {
+                    const badge = document.getElementById("valve-status");
+                    if (badge) {
+                        badge.className = data.valve_is_on ? "badge bg-success" : "badge bg-secondary";
+                        badge.innerText = data.valve_is_on ? "Ligada" : "Desligada";
+                    }
+                }
+            })
+            .catch(error => console.error('Erro ao buscar sensores:', error));
+    }
+
+    function fetchActuatorData() {
+        fetch("{% url 'get_actuator_values' %}")
+            .then(response => {
+                if (!response.ok) return [];
+                return response.json();
+            })
+            .then(data => {
+                if (Array.isArray(data)) {
+                    data.forEach(actuator => {
+                        const badge = document.getElementById(`actuator-status-${actuator.id}`);
+                        if (badge) {
+                            badge.className = actuator.status ? "badge bg-success ml-2" : "badge bg-danger ml-2";
+                            badge.textContent = actuator.status ? "LIGADO" : "DESLIGADO";
+                        }
+                    });
+                }
+            })
+            .catch(error => console.error('Erro ao buscar atuadores:', error));
+    }
+
+    document.getElementById("irrigation-form").addEventListener("submit", function (e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+
+        fetch("{% url 'save_irrigation_config' %}", {
+            method: "POST",
+            body: formData,
+            headers: {
+                "X-CSRFToken": formData.get("csrfmiddlewaretoken")
             }
         })
-        .catch(error => console.error('Erro ao buscar atuadores:', error));
-}
+            .then(response => response.json())
+            .then(data => alert("Configurações salvas com sucesso!"))
+            .catch(error => console.error("Erro ao salvar:", error));
+    });
 
-// Submeter formulário de irrigação via AJAX
-document.getElementById("irrigation-form").addEventListener("submit", function(e) {
-    e.preventDefault();
-    const formData = new FormData(this);
-    
-    fetch("{% url 'save_irrigation_config' %}", {
-        method: "POST",
-        body: formData,
-        headers: {
-            "X-CSRFToken": formData.get("csrfmiddlewaretoken")
-        }
-    })
-    .then(response => response.json())
-    .then(data => alert("Configurações salvas com sucesso!"))
-    .catch(error => console.error("Erro ao salvar:", error));
-});
+    window.onload = () => {
+        fetchSensorData();
+        fetchActuatorData();
+    };
 
-// Execução periódica
-window.onload = () => {
-    fetchSensorData();
-    fetchActuatorData();
-};
+    setInterval(() => {
+        fetchSensorData();
+        fetchActuatorData();
+    }, 3000);
 
-setInterval(() => {
-    fetchSensorData();
-    fetchActuatorData();
-}, 3000);
+    const scheduleForm = document.getElementById("schedule-form");
+    const inputMin = document.getElementById("duracao_minutos");
+    const inputSec = document.getElementById("duracao_segundos");
+    const inputTotal = document.getElementById("duracao_total");
+
+    function recalcularDuracao() {
+        const minutos = parseInt(inputMin.value, 10) || 0;
+        const segundos = parseInt(inputSec.value, 10) || 0;
+        inputTotal.value = (minutos * 60) + segundos;
+    }
+
+    if (scheduleForm) {
+        inputMin.addEventListener("input", recalcularDuracao);
+        inputSec.addEventListener("input", recalcularDuracao);
+
+        scheduleForm.addEventListener("submit", function (e) {
+            recalcularDuracao();
+            if (parseInt(inputTotal.value, 10) <= 0) {
+                e.preventDefault();
+                alert("Defina uma duração mínima de pelo menos 1 segundo.");
+            }
+        });
+    }
 </script>
 {% endblock %}
