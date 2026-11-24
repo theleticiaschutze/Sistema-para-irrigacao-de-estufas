@@ -12,10 +12,6 @@ from .models import CommandDevice, SensorDevice, IrrigationConfig
 from .mqtt_client import publish_message
 from .models import AgendamentoIrrigacao
 
-from django.shortcuts import get_object_or_404, redirect
-from django.contrib.auth.decorators import login_required
-from .models import AgendamentoIrrigacao
-
 
 @csrf_exempt
 def update_sensor_value_by_topic(request):
@@ -232,9 +228,8 @@ def get_sensor_values(request):
 def save_irrigation_config(request):
     if request.method == "POST":
         config, _ = IrrigationConfig.objects.get_or_create(user=request.user)
-
         old_actuator = config.actuator
-        
+
         temp_val = request.POST.get('temp_limit')
         hum_val = request.POST.get('hum_limit')
         temp_sensor_id = request.POST.get('temp_sensor_id')
@@ -247,35 +242,31 @@ def save_irrigation_config(request):
             if hum_val:
                 config.hum_limit = float(hum_val)
 
-
             config.temp_sensor_id = int(temp_sensor_id) if temp_sensor_id else None
             config.hum_sensor_id = int(hum_sensor_id) if hum_sensor_id else None
             new_actuator_id = int(actuator_id) if actuator_id else None
             config.actuator_id = new_actuator_id
-           
-            
-            # Verifica se trocou de atuador ou desligou o modo automático
-            trocou_atuador = old_actuator and (old_actuator.id != new_actuator_id)
+
+            new_auto_mode = 'auto_mode' in request.POST
+            config.auto_mode = new_auto_mode
+
+            trocou_atuador = old_actuator is not None and (old_actuator.id != new_actuator_id)
             desligou_auto = not new_auto_mode
 
             if config.valve_is_on and (trocou_atuador or desligou_auto):
-                # 1. Desliga fisicamente o LED/atuador anterior
-                if old_actuator:
-                    try:
-                        publish_message(old_actuator.topic, 'off')
-                    except Exception as e:
-                        print("Erro ao desligar atuador antigo via MQTT:", e)
-                
-                # 2. Reseta o estado da automação para forçar a reavaliação no novo LED
+                try:
+                    publish_message(old_actuator.topic, 'off')
+                except Exception as e:
+                    print("Erro ao desligar atuador antigo via MQTT:", e)
                 config.valve_is_on = False
-            
+
             config.save()
             return JsonResponse({'status': 'success', 'message': 'Configurações salvas!'})
-        except ValueError:
-            return JsonResponse({'status': 'error', 'message': 'Valores numéricos inválidos'}, status=400)
+        except Exception as e:
+            print("Erro em save_irrigation_config:", e)
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
 
     return JsonResponse({'status': 'error', 'message': 'Método não permitido'}, status=405)
-
 
 @login_required
 def criar_agendamento(request):
