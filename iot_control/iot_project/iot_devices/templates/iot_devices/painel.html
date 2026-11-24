@@ -243,7 +243,11 @@
             }
         })
             .then(response => response.json())
-            .then(data => alert("Configurações salvas com sucesso!"))
+            .then(data => {
+                alert("Configurações salvas com sucesso!");
+                fetchSensorData(); // Força a atualização imediata da automação
+                fetchActuatorData();
+            })
             .catch(error => console.error("Erro ao salvar:", error));
     });
 
