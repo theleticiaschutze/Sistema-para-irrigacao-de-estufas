@@ -22,6 +22,9 @@ const char *sensor_topic = "topicIrrigacao_ifsc/5";     // MQTT topic
 const char *comando_topic = "topicIrrigacao_ifsc/6";     // MQTT topic
 const char *umidade_topic = "topicIrrigacao_ifsc/7";
 const char *status_topic  = "topicIrrigacao_ifsc/8"; // statudos do led
+const char *tempanalogica_topic  = "topicIrrigacao_ifsc/9"; // temp lm35
+const char *sensor2_topic = "topicIrrigacao_ifsc/10";
+const char *comando2_topic = "topicIrrigacao_ifsc/11";  
 
 unsigned long ultimoEnvio = 0;
 
@@ -37,6 +40,8 @@ void setup() {
     Serial.begin(115200);
     pinMode(D6, OUTPUT);
     digitalWrite(D6, LOW);
+    pinMode(D7, OUTPUT);
+    digitalWrite(D7, LOW);
     
     connectToWiFi();
     mqtt_client.setServer(mqtt_broker, mqtt_port);
@@ -63,8 +68,10 @@ void connectToMQTTBroker() {
         if (mqtt_client.connect(client_id.c_str(), mqtt_username, mqtt_password)) {
             Serial.println("Conectado ao MQTT broker");
             mqtt_client.subscribe(comando_topic);
+            mqtt_client.subscribe(comando2_topic);
             mqtt_client.publish(sensor_topic, "Ola EMQX sou ESP8266 trabalhando para irrigar! ^^");
             mqtt_client.publish(status_topic, digitalRead(D6) == HIGH ? "1" : "0");
+            mqtt_client.publish(sensor2_topic, digitalRead(D7) == HIGH ? "1" : "0");
         } else {
             Serial.print("Falha ao conectar no MQTT broker, rc=");
             Serial.print(mqtt_client.state());
@@ -95,15 +102,25 @@ void mqttCallback(char *topic, byte *payload, unsigned int length) {
 
     
     
-    if (message == "on") {
-        digitalWrite(D6, HIGH);
-        mqtt_client.publish(status_topic, "1");
-        Serial.println("D6 Ligado!");
+    if (String(topic) == comando_topic) {
+        if (message == "on") {
+            digitalWrite(D6, HIGH);        
+            Serial.println("D6 Ligado!");
+        } 
+        else if (message == "off") {
+            digitalWrite(D6, LOW);       
+            Serial.println("D6 Desligado!");
+        }
     } 
-    else if (message == "off") {
-        digitalWrite(D6, LOW);
-        mqtt_client.publish(status_topic, "0");
-        Serial.println("D6 Desligado!");
+    else if (String(topic) == comando2_topic) {
+        if (message == "on") {
+            digitalWrite(D7, HIGH);        
+            Serial.println("D7 Ligado!");
+        } 
+        else if (message == "off") {
+            digitalWrite(D7, LOW);       
+            Serial.println("D7 Desligado!");
+        }
     }
 }
 
@@ -120,8 +137,31 @@ void loop() {
 
     mqtt_client.loop(); 
 
-    if (millis() - ultimoEnvio >= 5000) {
+    if (millis() - ultimoEnvio >= 3000) {
         ultimoEnvio = millis();
+
+        int estadoPino = digitalRead(D6);
+
+        if (estadoPino == HIGH) {
+            mqtt_client.publish(status_topic, "1");
+        } else {
+            mqtt_client.publish(status_topic, "0");
+        }
+
+        int estadoPino2 = digitalRead(D7);
+        if (estadoPino2 == HIGH) {
+            mqtt_client.publish(sensor2_topic, "1");
+        } else {
+            mqtt_client.publish(sensor2_topic, "0");
+        }
+
+        int leituralm35 = analogRead(A0);
+        float tempana = (leituralm35 * 3.3 / 1024.0) * 100.0; 
+        String payloadAna = String(tempana, 1);
+
+        mqtt_client.publish(tempanalogica_topic, payloadAna.c_str());
+        Serial.print("\nTemp LM35 enviada: \n");
+        Serial.println(payloadAna);
 
         float temperatura = dht.readTemperature();
         float umidade = dht.readHumidity();
@@ -137,10 +177,10 @@ void loop() {
     if (umidade < 95.0 && umidade > 15.0) {
 
              
-          String payloadTemp = String(temperatura, 1);
+        String payloadTemp = String(temperatura, 1);
         String payloadUmid = String(umidade, 1);
-         mqtt_client.publish(sensor_topic, payloadTemp.c_str());
-         mqtt_client.publish(umidade_topic, payloadUmid.c_str());
+        mqtt_client.publish(sensor_topic, payloadTemp.c_str());
+        mqtt_client.publish(umidade_topic, payloadUmid.c_str());
         Serial.print("Temp enviada: \n");
         Serial.println(payloadTemp);
         Serial.print("Umi enviada: \n");
